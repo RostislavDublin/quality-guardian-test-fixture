@@ -1,10 +1,32 @@
 """User authentication module."""
 
+import re
+
+
+def validate_password(password: str) -> bool:
+    """Validate password strength.
+    
+    Requirements:
+    - At least 8 characters
+    - Contains uppercase letter
+    - Contains digit
+    """
+    if len(password) < 8:
+        return False
+    if not re.search(r"[A-Z]", password):
+        return False
+    if not re.search(r"[0-9]", password):
+        return False
+    return True
+
+
 def authenticate_user(username, password):
     """Authenticate user with username and password."""
-    # Simple authentication logic
     if not username or not password:
         return False
     
-    # TODO: Add password validation
+    # Validate password strength
+    if not validate_password(password):
+        return False
+    
     return True
