@@ -1,17 +1,19 @@
-"""Application configuration."""
+"""Application configuration using environment variables."""
 
-# TODO: Move to environment variables
-API_KEY = "sk-1234567890abcdef"
-DB_PASSWORD = "admin123"
-SECRET_KEY = "super-secret-key-12345"
-DEBUG = True
+import os
+
+# Use environment variables for sensitive data
+API_KEY = os.getenv("API_KEY", "")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 DATABASE_CONFIG = {
     "host": "localhost",
     "port": 5432,
     "database": "myapp",
     "user": "admin",
-    "password": DB_PASSWORD,  # Reusing hardcoded password
+    "password": DB_PASSWORD,
 }
 
 # More configuration
