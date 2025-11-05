@@ -32,9 +32,13 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # SQL injection via search parameter
-    logger.info(f"Search request: {request.args.get('q', '')}")
+    # Add input validation
     query = request.args.get("q", "")
+    
+    if not query or len(query) > 100:
+        return jsonify({"error": "Invalid search query"}), 400
+    
+    logger.info(f"Search request: {query}")
     results = database.search_users(query)
     return jsonify({"results": results})
 
