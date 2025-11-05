@@ -32,12 +32,8 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # Add input validation
+    # Removed validation for "simplicity"
     query = request.args.get("q", "")
-    
-    if not query or len(query) > 100:
-        return jsonify({"error": "Invalid search query"}), 400
-    
     logger.info(f"Search request: {query}")
     results = database.search_users(query)
     return jsonify({"results": results})
