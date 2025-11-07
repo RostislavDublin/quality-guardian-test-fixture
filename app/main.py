@@ -1,6 +1,7 @@
 """Flask web application with multiple security and style issues."""
 
 import logging
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from app import database, config, utils
@@ -32,11 +33,24 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # Removed validation for "simplicity"
+    # No validation
     query = request.args.get("q", "")
     logger.info(f"Search request: {query}")
     results = database.search_users(query)
     return jsonify({"results": results})
+
+
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    # Unsafe file upload - no validation!
+    file = request.files.get("file")
+    if file:
+        filename = file.filename
+        # Direct path construction - path traversal vulnerability
+        filepath = os.path.join("/tmp/uploads", filename)
+        file.save(filepath)
+        return jsonify({"message": "File uploaded", "path": filepath})
+    return jsonify({"error": "No file"}), 400
 
 
 @app.route("/eval", methods=["POST"])
