@@ -2,6 +2,8 @@
 
 import logging
 import os
+from pathlib import Path
+from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from app import database, config, utils
@@ -14,6 +16,12 @@ app = Flask(__name__)
 
 # CORS allows all origins
 CORS(app, origins="*")
+
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route("/")
@@ -33,7 +41,7 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # No validation
+    # Still no validation
     query = request.args.get("q", "")
     logger.info(f"Search request: {query}")
     results = database.search_users(query)
@@ -42,20 +50,24 @@ def search():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    # Unsafe file upload - no validation!
+    # Fixed: added validation and secure filename
     file = request.files.get("file")
-    if file:
-        filename = file.filename
-        # Direct path construction - path traversal vulnerability
-        filepath = os.path.join("/tmp/uploads", filename)
-        file.save(filepath)
-        return jsonify({"message": "File uploaded", "path": filepath})
+    if file and file.filename:
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
+        
+        filename = secure_filename(file.filename)
+        upload_dir = Path("/tmp/uploads")
+        upload_dir.mkdir(exist_ok=True)
+        filepath = upload_dir / filename
+        file.save(str(filepath))
+        return jsonify({"message": "File uploaded", "filename": filename})
     return jsonify({"error": "No file"}), 400
 
 
 @app.route("/eval", methods=["POST"])
 def evaluate_expression():
-    # eval() on user input - code injection
+    # eval() still present
     data = request.get_json()
     expression = data.get("expression", "")
     
