@@ -41,8 +41,12 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # Still no validation
+    # Fixed: restored validation
     query = request.args.get("q", "")
+    
+    if not query or len(query) > 100:
+        return jsonify({"error": "Invalid search query"}), 400
+    
     logger.info(f"Search request: {query}")
     results = database.search_users(query)
     return jsonify({"results": results})
@@ -50,7 +54,7 @@ def search():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    # Fixed: added validation and secure filename
+    # Secure file upload
     file = request.files.get("file")
     if file and file.filename:
         if not allowed_file(file.filename):
