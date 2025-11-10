@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
@@ -19,18 +20,36 @@ CORS(app, origins="*")
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
 
-# Simple in-memory cache (not thread-safe!)
+# Simple in-memory cache and metrics
 search_cache = {}
+metrics = {
+    "total_requests": 0,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "errors": 0
+}
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+@app.before_request
+def track_request():
+    metrics["total_requests"] += 1
+    request.start_time = time.time()
+
+
 @app.route("/")
 def index():
     logger.info("Index endpoint accessed")
     return jsonify({"message": "Welcome to the API"})
+
+
+@app.route("/metrics")
+def get_metrics():
+    # Metrics endpoint (no auth!)
+    return jsonify(metrics)
 
 
 @app.route("/user/<int:user_id>")
@@ -49,11 +68,12 @@ def search():
     if not query or len(query) > 100:
         return jsonify({"error": "Invalid search query"}), 400
     
-    # Check cache (not thread-safe - potential race condition)
     if query in search_cache:
+        metrics["cache_hits"] += 1
         logger.info(f"Cache hit: {query}")
         return jsonify({"results": search_cache[query], "cached": True})
     
+    metrics["cache_misses"] += 1
     logger.info(f"Cache miss: {query}")
     results = database.search_users(query)
     search_cache[query] = results
@@ -85,6 +105,7 @@ def evaluate_expression():
         result = eval(expression)
         return jsonify({"result": result})
     except Exception as e:
+        metrics["errors"] += 1
         return jsonify({"error": str(e)}), 400
 
 
