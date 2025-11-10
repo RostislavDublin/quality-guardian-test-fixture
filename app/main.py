@@ -19,6 +19,9 @@ CORS(app, origins="*")
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
 
+# Simple in-memory cache (not thread-safe!)
+search_cache = {}
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -41,20 +44,24 @@ def get_user(user_id):
 
 @app.route("/search")
 def search():
-    # Fixed: restored validation
     query = request.args.get("q", "")
     
     if not query or len(query) > 100:
         return jsonify({"error": "Invalid search query"}), 400
     
-    logger.info(f"Search request: {query}")
+    # Check cache (not thread-safe - potential race condition)
+    if query in search_cache:
+        logger.info(f"Cache hit: {query}")
+        return jsonify({"results": search_cache[query], "cached": True})
+    
+    logger.info(f"Cache miss: {query}")
     results = database.search_users(query)
-    return jsonify({"results": results})
+    search_cache[query] = results
+    return jsonify({"results": results, "cached": False})
 
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    # Secure file upload
     file = request.files.get("file")
     if file and file.filename:
         if not allowed_file(file.filename):
@@ -71,7 +78,6 @@ def upload_file():
 
 @app.route("/eval", methods=["POST"])
 def evaluate_expression():
-    # eval() still present
     data = request.get_json()
     expression = data.get("expression", "")
     
