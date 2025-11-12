@@ -15,23 +15,42 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# CORS allows all origins (still needs fixing)
-CORS(app, origins="*")
+# CORS now restricted
+CORS(app, origins=["https://example.com", "https://api.example.com"])
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
 
-# Simple in-memory cache and metrics
 search_cache = {}
 metrics = {
     "total_requests": 0,
     "cache_hits": 0,
     "cache_misses": 0,
-    "errors": 0
+    "errors": 0,
+    "auth_failures": 0
 }
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def require_auth(f):
+    """Simple JWT auth decorator."""
+    def wrapper(*args, **kwargs):
+        token = request.headers.get("Authorization")
+        if not token or not token.startswith("Bearer "):
+            metrics["auth_failures"] += 1
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Simplified: just check token exists (real impl would verify JWT)
+        jwt_token = token.replace("Bearer ", "")
+        if not utils.verify_jwt(jwt_token):
+            metrics["auth_failures"] += 1
+            return jsonify({"error": "Invalid token"}), 401
+        
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
 
 
 @app.before_request
@@ -42,19 +61,20 @@ def track_request():
 
 @app.route("/")
 def index():
-    logger.info("Index endpoint accessed")
     return jsonify({"message": "Welcome to the API"})
 
 
 @app.route("/metrics")
+@require_auth
 def get_metrics():
-    # Metrics endpoint (still no auth, but less critical)
+    # Now requires authentication!
     return jsonify(metrics)
 
 
 @app.route("/user/<int:user_id>")
+@require_auth
 def get_user(user_id):
-    # No authentication check
+    # Now requires authentication!
     user = database.get_user_by_id(user_id)
     if user:
         return jsonify(user)
@@ -62,6 +82,7 @@ def get_user(user_id):
 
 
 @app.route("/search")
+@require_auth
 def search():
     query = request.args.get("q", "")
     
@@ -70,17 +91,16 @@ def search():
     
     if query in search_cache:
         metrics["cache_hits"] += 1
-        logger.info(f"Cache hit: {query}")
         return jsonify({"results": search_cache[query], "cached": True})
     
     metrics["cache_misses"] += 1
-    logger.info(f"Cache miss: {query}")
     results = database.search_users(query)
     search_cache[query] = results
     return jsonify({"results": results, "cached": False})
 
 
 @app.route("/upload", methods=["POST"])
+@require_auth
 def upload_file():
     file = request.files.get("file")
     if file and file.filename:
@@ -94,9 +114,6 @@ def upload_file():
         file.save(str(filepath))
         return jsonify({"message": "File uploaded", "filename": filename})
     return jsonify({"error": "No file"}), 400
-
-
-# Removed dangerous eval endpoint!
 
 
 if __name__ == "__main__":
