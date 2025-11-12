@@ -1,4 +1,4 @@
-"""Flask web application with multiple security and style issues."""
+"""Flask web application with improved security."""
 
 import logging
 import os
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# CORS allows all origins
+# CORS allows all origins (still needs fixing)
 CORS(app, origins="*")
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
@@ -48,7 +48,7 @@ def index():
 
 @app.route("/metrics")
 def get_metrics():
-    # Metrics endpoint (no auth!)
+    # Metrics endpoint (still no auth, but less critical)
     return jsonify(metrics)
 
 
@@ -96,17 +96,7 @@ def upload_file():
     return jsonify({"error": "No file"}), 400
 
 
-@app.route("/eval", methods=["POST"])
-def evaluate_expression():
-    data = request.get_json()
-    expression = data.get("expression", "")
-    
-    try:
-        result = eval(expression)
-        return jsonify({"result": result})
-    except Exception as e:
-        metrics["errors"] += 1
-        return jsonify({"error": str(e)}), 400
+# Removed dangerous eval endpoint!
 
 
 if __name__ == "__main__":
