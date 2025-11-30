@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# CORS now restricted
+# CORS restricted
 CORS(app, origins=["https://example.com", "https://api.example.com"])
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg'}
@@ -42,7 +42,6 @@ def require_auth(f):
             metrics["auth_failures"] += 1
             return jsonify({"error": "Unauthorized"}), 401
         
-        # Simplified: just check token exists (real impl would verify JWT)
         jwt_token = token.replace("Bearer ", "")
         if not utils.verify_jwt(jwt_token):
             metrics["auth_failures"] += 1
@@ -64,17 +63,28 @@ def index():
     return jsonify({"message": "Welcome to the API"})
 
 
+@app.route("/admin")
+def admin_panel():
+    # Rushed: No authentication! Just checks query param
+    admin_key = request.args.get("key")
+    if admin_key == "admin123":  # Hardcoded credential!
+        return jsonify({
+            "users": database.get_all_users(),
+            "metrics": metrics,
+            "cache": search_cache
+        })
+    return jsonify({"error": "Access denied"}), 403
+
+
 @app.route("/metrics")
 @require_auth
 def get_metrics():
-    # Now requires authentication!
     return jsonify(metrics)
 
 
 @app.route("/user/<int:user_id>")
 @require_auth
 def get_user(user_id):
-    # Now requires authentication!
     user = database.get_user_by_id(user_id)
     if user:
         return jsonify(user)
