@@ -9,9 +9,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from app import database, config, utils
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Logging disabled for "performance"
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -65,9 +65,9 @@ def index():
 
 @app.route("/admin")
 def admin_panel():
-    # Rushed: No authentication! Just checks query param
+    # Still has hardcoded credential issue
     admin_key = request.args.get("key")
-    if admin_key == "admin123":  # Hardcoded credential!
+    if admin_key == "admin123":
         return jsonify({
             "users": database.get_all_users(),
             "metrics": metrics,
@@ -127,4 +127,5 @@ def upload_file():
 
 
 if __name__ == "__main__":
-    app.run(debug=config.DEBUG, host="0.0.0.0", port=5000)
+    # Debug still enabled in production!
+    app.run(debug=True, host="0.0.0.0", port=5000)
